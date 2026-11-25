@@ -2,6 +2,7 @@
 from collections import OrderedDict
 from collections.abc import Mapping
 from pathlib import Path
+import pickle
 
 import torch
 from torch import Tensor, nn
@@ -41,7 +42,36 @@ def load_weights(model: nn.Module, path: str | Path, *, trusted_pickle: bool = F
     initialized, reshaped or silently ignored. Unsafe legacy metadata requires
     explicit opt-in, only for a checkpoint you independently trust.
     """
-    data = torch.load(path, map_location="cpu", weights_only=not trusted_pickle)
+    try:
+        data = torch.load(path, map_location="cpu", weights_only=not trusted_pickle)
+    except pickle.UnpicklingError as exc:
+        # Released checkpoints include NumPy scalar training statistics.
+        # Permit only these specific metadata types under the restricted
+        # unpickler, including NumPy 2's renamed scalar module.
+        if trusted_pickle or "numpy" not in str(exc):
+            raise
+        if not hasattr(torch.serialization, "safe_globals"):
+            raise RuntimeError(
+                "This PyTorch version cannot safely deserialize legacy NumPy "
+                "metadata. Use a newer PyTorch to export the tensor state dict, "
+                "or pass trusted_pickle=True only for independently trusted files."
+            ) from exc
+        import numpy as np
+        try:
+            from numpy._core.multiarray import scalar
+        except ImportError:
+            from numpy.core.multiarray import scalar
+        types = [np.dtype, scalar]
+        if scalar.__module__ != "numpy.core.multiarray":
+            types.append((scalar, "numpy.core.multiarray.scalar"))
+        if scalar.__module__ != "numpy._core.multiarray":
+            types.append((scalar, "numpy._core.multiarray.scalar"))
+        types.extend({type(np.dtype(name)) for name in (
+            "bool", "float16", "float32", "float64", "int8", "int16",
+            "int32", "int64", "uint8", "uint16", "uint32", "uint64"
+        )})
+        with torch.serialization.safe_globals(types):
+            data = torch.load(path, map_location="cpu", weights_only=True)
     if not isinstance(data, Mapping):
         raise ValueError("Expected a state dictionary or checkpoint mapping")
     for key in ("net", "state_dict", "model", "params"):
