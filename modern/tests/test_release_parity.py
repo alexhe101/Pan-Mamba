@@ -74,6 +74,8 @@ def test_vendored_mamba_is_release():
         "selective_scan_fn, mamba_inner_fn, bimamba_inner_fn, mamba_inner_fn_no_out_proj = None, None, None, None, None",
         "selective_scan_fn, mamba_inner_fn, bimamba_inner_fn, mamba_inner_fn_no_out_proj = None, None, None, None"
     )
+    fixed = fixed.replace("causal_conv1d_fn, causal_conv1d_update = None\n",
+                          "causal_conv1d_fn, causal_conv1d_update = None, None\n")
     assert Path(_mamba_simple.__file__).read_text(encoding="utf-8") == fixed
 
 
