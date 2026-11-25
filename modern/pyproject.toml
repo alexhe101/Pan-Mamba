@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "panmamba-modern"
+version = "0.1.0"
+description = "Compatibility-first refactor of Pan-Mamba"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.1.1", "numpy>=1.24", "einops>=0.6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "scipy>=1.10"]
+
+[project.scripts]
+panmamba = "panmamba.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
