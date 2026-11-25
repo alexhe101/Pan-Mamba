@@ -1,0 +1,24 @@
+name: Pan-Mamba Modern compatibility
+on:
+  workflow_dispatch:
+  push:
+    paths: ['modern/**', '.github/workflows/modern-pytorch.yml', 'pan-sharpening/checkpoint/pretrained/**', 'Mamba-block/**', 'pan-sharpening/model/**']
+  pull_request:
+    paths: ['modern/**', '.github/workflows/modern-pytorch.yml', 'pan-sharpening/checkpoint/pretrained/**', 'Mamba-block/**', 'pan-sharpening/model/**']
+permissions:
+  contents: read
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e './modern[dev]'
+      - run: python -m pytest modern/tests -v -rs
